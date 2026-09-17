@@ -1,36 +1,143 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Delivery Run Sheet
 
-## Getting Started
+A dispatcher assigns deliveries to drivers. A driver sees only their own
+deliveries and marks each one delivered.
 
-First, run the development server:
+## Architecture overview
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Next.js (App Router) + TypeScript**, deployed on Vercel. All data access
+  happens in Server Components and Server Actions — no client-side Supabase
+  calls, so secrets never reach the browser and there's one code path to
+  reason about for access control.
+- **Supabase (Postgres)** is the only datastore. Rather than using Supabase
+  Auth (which requires either a password or an email round-trip), sign-in is
+  a custom flow: a server route looks the entered email up in an allowlist
+  table (`users`) and, if found, mints its own Supabase-compatible JWT
+  (signed with the project's JWT secret) and sets it as an httpOnly cookie.
+  Every subsequent Supabase query from that browser session carries that JWT
+  as its Authorization bearer token, so **Postgres Row Level Security is
+  what actually enforces who can see and change what** — not application
+  `if` statements. See "Custom Postgres roles" below for how the JWT's
+  `role` claim maps onto real RLS policies.
+- **Tailwind CSS**, used directly with no component library — plain utility
+  classes on plain HTML elements.
+- **Plain `fetch`** to OpenWeatherMap's current-weather endpoint, called
+  server-side per delivery, no SDK.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Custom Postgres roles (why RLS is "real" here)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Supabase's usual RLS pattern checks `auth.uid()` / `auth.role()` against
+claims from a Supabase Auth session. Since this app mints its own JWTs, it
+follows Supabase's documented **Custom Claims & RBAC** pattern instead of the
+default `authenticated` role:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- The database migration creates two real Postgres roles, `dispatcher` and
+  `driver`, and grants both to `authenticator` (the role PostgREST connects
+  as).
+- Our login route's JWT sets its `role` claim to literally `"dispatcher"` or
+  `"driver"`. PostgREST verifies the JWT signature (using
+  `SUPABASE_JWT_SECRET`) and executes the request as that Postgres role via
+  `SET LOCAL ROLE`.
+- Table and **column**-level `GRANT`s differ per role — e.g. `driver` only
+  ever has `UPDATE` privilege on the `status` and `delivered_at` columns of
+  `deliveries`, full stop, regardless of what the application code sends.
+- RLS policies scoped `TO dispatcher` / `TO driver` then filter rows, e.g.
+  drivers can only `SELECT`/`UPDATE` deliveries where
+  `assigned_driver_id = auth.uid()`.
 
-## Learn More
+This means a compromised or buggy Server Action still can't leak or mutate
+data outside a role's boundaries — the database itself refuses it. This is
+verified by `scripts/verify-rls.mjs`, which signs throwaway JWTs for two fake
+drivers and confirms driver B genuinely cannot read or write driver A's row.
 
-To learn more about Next.js, take a look at the following resources:
+## Setup — run locally
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. `npm install`
+2. Copy `.env.local.example` to `.env.local` and fill in the five values
+   (see "Environment variables" below).
+3. `npm run dev`, open http://localhost:3000
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Setup — database
 
-## Deploy on Vercel
+Run `supabase/migrations/0001_init.sql` once, in order, via the Supabase
+dashboard's **SQL Editor** (or `supabase db push` if you use the CLI with a
+linked project). Then seed the allowlist — copy
+`supabase/seed.example.sql`, replace the placeholder emails, and run it the
+same way.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Environment variables
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Variable | Where to find it |
+|---|---|
+| `SUPABASE_URL` | Project Settings → API → Project URL |
+| `SUPABASE_ANON_KEY` | Project Settings → API → Project API keys → `anon` `public` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API → Project API keys → `service_role` (secret) |
+| `SUPABASE_JWT_SECRET` | Project Settings → API → JWT Settings → JWT Secret |
+| `OPENWEATHERMAP_API_KEY` | openweathermap.org → My API keys |
+
+Set the same five in Vercel: **Project Settings → Environment Variables**
+(Production + Preview + Development).
+
+## Redeploying
+
+Push to the connected GitHub repo's default branch — Vercel redeploys
+automatically. For a manual deploy: `npx vercel --prod` from the project
+root (requires `vercel link` once, and the env vars above set in Vercel).
+
+## Shortcuts taken (and what "more correct" would look like)
+
+- **Weather lookup uses the raw address string as OpenWeatherMap's `q`
+  (city name) parameter** (`lib/weather.ts`), taking whatever's after the
+  last comma in the address. This works for "Street, City"-style input but
+  can miss on a full unambiguous street address. A real version would
+  geocode the address first (OpenWeatherMap's Geocoding API, or Google/Mapbox)
+  to get lat/lon and query by coordinates.
+- **No email verification / no password**, by design per spec — the `users`
+  table itself is the allowlist, and possessing the signed session cookie is
+  the only proof of identity after that. A real version aimed at the public
+  internet would want at least a magic-link email round trip or short-lived
+  OTP, so that knowing someone's email isn't enough to have the cookie
+  minted on your behalf from a shared/public machine.
+- **Weather is fetched per delivery on every dispatcher/driver page load**
+  (cached 10 minutes via Next's `fetch` revalidation, not deduplicated
+  across duplicate addresses on the same page). Fine at this scale; a real
+  version would cache by city, not by delivery.
+- **No rate limiting on `/api/auth/login`.** Since it's allowlist-based (no
+  password to brute-force) the worst case is enumerating which emails are
+  registered, which is a low-severity issue here, but a public production
+  version would add basic rate limiting.
+- **Database password handling**: the Postgres database password generated
+  during project creation is only needed for direct `psql`/CLI database
+  connections, which this app doesn't use (all access goes through
+  PostgREST via the anon/service-role keys + JWTs). It isn't referenced
+  anywhere in the app and isn't a required env var.
+
+## Claude Code tooling used during this build
+
+- **Skills** (packaged instructions Claude Code loads for a specific kind of
+  task, similar to a saved runbook): none were used for feature work in this
+  build — the app code, SQL, and README were written directly.
+- **Plugins** (bundles of skills/commands/config someone else packaged and
+  you install): none were used.
+- **MCP servers** (Model Context Protocol — a standard way to give Claude
+  Code tools beyond its built-ins, e.g. talking to a specific external
+  service): none were used for this app. All Supabase/GitHub/OpenWeatherMap
+  work was done with the Supabase CLI, GitHub CLI, and plain `curl`/`fetch`
+  calls run directly in a terminal, not through an MCP integration.
+
+## Checklist
+
+- [x] 3+ distinct pages/routes (`/login`, `/dispatcher`, `/driver`, `/settings`)
+- [x] Settings change (name, WhatsApp number) takes effect immediately —
+      read live from `users` on every page render, not cached
+- [x] 7 distinct user actions (create delivery, assign/reassign, view own
+      list, mark delivered, edit profile, WhatsApp deep link, weather tag)
+- [x] Public GitHub repo with incremental commit history
+- [x] Supabase RLS genuinely restricts drivers — proven by
+      `scripts/verify-rls.mjs` against the live database
+- [x] Live Vercel URL
+- [x] Allowlist-only sign-in, no verification email
+- [x] Two roles behave differently at the data layer (distinct Postgres
+      roles + RLS policies + column grants, not just UI conditionals)
+- [x] WhatsApp button opens a prefilled `wa.me` chat
+- [x] OpenWeatherMap call working with a user-supplied key
