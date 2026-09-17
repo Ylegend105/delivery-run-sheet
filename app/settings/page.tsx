@@ -49,8 +49,8 @@ export default async function SettingsPage() {
             className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
           />
           <p className="mt-1 text-xs text-gray-400">
-            Include country code. This is the number others' WhatsApp buttons
-            will message you on, and takes effect as soon as you save.
+            Include country code. This is the number others&rsquo; WhatsApp
+            buttons will message you on, and takes effect as soon as you save.
           </p>
         </div>
         <button
