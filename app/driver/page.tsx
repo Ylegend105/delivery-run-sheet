@@ -6,6 +6,8 @@ import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { MarkDeliveredButton } from "./MarkDeliveredButton";
 import type { DeliveryRow, UserRow } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 export default async function DriverPage() {
   const { session, supabase } = await getSessionAndSupabase();
   if (!session || session.role !== "driver" || !supabase) {
@@ -51,7 +53,7 @@ export default async function DriverPage() {
           return (
             <div
               key={delivery.id}
-              className="rounded border border-gray-200 p-4"
+              className="rounded-lg border border-gray-200 bg-white p-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <div>

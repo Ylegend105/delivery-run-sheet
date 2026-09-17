@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { assignDelivery } from "./actions";
 import type { UserRow } from "@/lib/types";
+import { inputClass } from "@/lib/ui";
 
 export function AssignDriverSelect({
   deliveryId,
@@ -25,7 +26,7 @@ export function AssignDriverSelect({
           assignDelivery(deliveryId, driverId);
         });
       }}
-      className="rounded border border-gray-300 px-2 py-1 text-xs disabled:opacity-50"
+      className={`text-xs ${inputClass}`}
     >
       <option value="">Unassigned</option>
       {drivers.map((driver) => (

@@ -7,6 +7,8 @@ import { CreateDeliveryForm } from "./CreateDeliveryForm";
 import { AssignDriverSelect } from "./AssignDriverSelect";
 import type { DeliveryRow, UserRow } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 export default async function DispatcherPage() {
   const { session, supabase } = await getSessionAndSupabase();
   if (!session || session.role !== "dispatcher" || !supabase) {
@@ -46,9 +48,9 @@ export default async function DispatcherPage() {
 
       <CreateDeliveryForm drivers={driverList} />
 
-      <div className="overflow-x-auto rounded border border-gray-200">
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
         <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+          <thead className="bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
             <tr>
               <th className="px-3 py-2">Customer</th>
               <th className="px-3 py-2">Address</th>

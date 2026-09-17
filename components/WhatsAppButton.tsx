@@ -11,24 +11,24 @@ export function WhatsAppButton({
   message: string;
   label: string;
 }) {
-  if (!phoneNumber) {
+  const digits = phoneNumber ? toWaNumber(phoneNumber) : "";
+
+  if (!digits) {
     return (
-      <span className="inline-block rounded bg-gray-100 px-2 py-1 text-xs text-gray-400">
+      <span className="inline-block rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-400">
         No WhatsApp number set
       </span>
     );
   }
 
-  const href = `https://wa.me/${toWaNumber(phoneNumber)}?text=${encodeURIComponent(
-    message,
-  )}`;
+  const href = `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-block rounded bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700"
+      className="inline-block rounded-md bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700"
     >
       {label}
     </a>

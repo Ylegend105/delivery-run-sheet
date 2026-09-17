@@ -18,6 +18,9 @@ export function getSupabaseForToken(jwt: string) {
       headers: {
         Authorization: `Bearer ${jwt}`,
       },
+      // Always hit Postgres fresh — RLS-scoped reads must never be served
+      // from Next.js's fetch cache (e.g. right after a settings update).
+      fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
     },
   });
 }

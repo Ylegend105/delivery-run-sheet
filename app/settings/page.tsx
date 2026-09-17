@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { getSessionAndSupabase } from "@/lib/auth/session";
 import { updateProfile } from "./actions";
 import type { UserRow } from "@/lib/types";
+import { inputClass, primaryButtonClass, cardClass } from "@/lib/ui";
+
+export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const { session, supabase } = await getSessionAndSupabase();
@@ -26,7 +29,10 @@ export default async function SettingsPage() {
         Signed in as {profile.email} ({profile.role})
       </p>
 
-      <form action={updateProfile} className="space-y-3">
+      <form
+        action={updateProfile}
+        className={`space-y-4 p-5 ${cardClass}`}
+      >
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">
             Name
@@ -35,7 +41,7 @@ export default async function SettingsPage() {
             name="name"
             defaultValue={profile.name ?? ""}
             placeholder="Your name"
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+            className={`w-full ${inputClass}`}
           />
         </div>
         <div>
@@ -45,18 +51,18 @@ export default async function SettingsPage() {
           <input
             name="whatsapp_number"
             defaultValue={profile.whatsapp_number ?? ""}
-            placeholder="+1 555 123 4567"
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+            placeholder="e.g. 961XXXXXXXX (country code + number)"
+            className={`w-full ${inputClass}`}
           />
           <p className="mt-1 text-xs text-gray-400">
-            Include country code. This is the number others&rsquo; WhatsApp
-            buttons will message you on, and takes effect as soon as you save.
+            Digits only or with spaces/+/-/() — they&rsquo;re all stripped
+            automatically. Expected format after stripping:
+            961XXXXXXXX (country code, no leading 0 or +). This is the
+            number others&rsquo; WhatsApp buttons will message you on, and
+            takes effect as soon as you save.
           </p>
         </div>
-        <button
-          type="submit"
-          className="rounded bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800"
-        >
+        <button type="submit" className={primaryButtonClass}>
           Save
         </button>
       </form>

@@ -10,7 +10,7 @@ export function MarkDeliveredButton({ deliveryId }: { deliveryId: string }) {
     <button
       disabled={isPending}
       onClick={() => startTransition(() => markDelivered(deliveryId))}
-      className="rounded bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+      className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
     >
       {isPending ? "Marking…" : "Mark delivered"}
     </button>
