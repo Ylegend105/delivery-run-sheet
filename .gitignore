@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# supabase CLI local cache
+/supabase/.temp
+
+# editor/agent local state and auto-generated agent-rules files
+/.claude/
+/AGENTS.md
+/CLAUDE.md
