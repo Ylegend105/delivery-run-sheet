@@ -8,7 +8,10 @@
 //   2. driver B CANNOT SELECT it (RLS blocks cross-driver reads).
 //   3. driver A CAN update status/delivered_at on their own row.
 //   4. driver A CANNOT update customer_name (column-level grant blocks it).
-// Cleans up the test row at the end.
+//   5. driver B CANNOT update driver A's row.
+//   6. driver A CANNOT delete their own delivery (no DELETE privilege).
+//   7. a dispatcher CAN delete it.
+// Cleans up the test rows at the end.
 
 import { createClient } from "@supabase/supabase-js";
 import { SignJWT } from "jose";
@@ -38,8 +41,8 @@ for (const [name, val] of Object.entries({
 
 const secret = new TextEncoder().encode(SUPABASE_JWT_SECRET);
 
-async function signDriverJWT(sub) {
-  return new SignJWT({ email: `${sub}@example.com`, role: "driver", aud: "authenticated" })
+async function signJWT(sub, role) {
+  return new SignJWT({ email: `${sub}@example.com`, role, aud: "authenticated" })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setSubject(sub)
     .setIssuedAt()
@@ -97,8 +100,8 @@ if (insertError) {
 }
 
 try {
-  const jwtA = await signDriverJWT(driverA);
-  const jwtB = await signDriverJWT(driverB);
+  const jwtA = await signJWT(driverA, "driver");
+  const jwtB = await signJWT(driverB, "driver");
   const asDriverA = clientFor(jwtA);
   const asDriverB = clientFor(jwtB);
 
@@ -140,6 +143,35 @@ try {
   check(
     "driver B CANNOT update driver A's delivery at all",
     !!bUpdateError || (bUpdateRows?.length ?? 0) === 0,
+  );
+
+  const { error: driverDeleteError } = await asDriverA
+    .from("deliveries")
+    .delete()
+    .eq("id", delivery.id);
+  const { data: stillThere } = await admin
+    .from("deliveries")
+    .select("id")
+    .eq("id", delivery.id);
+  console.log(`  driver delete error: ${driverDeleteError?.message ?? "(none)"}`);
+  check(
+    "driver A CANNOT delete even their own delivery (permission error)",
+    !!driverDeleteError && stillThere?.length === 1,
+  );
+
+  const asDispatcher = clientFor(await signJWT(randomUUID(), "dispatcher"));
+  const { data: deletedRows, error: dispatcherDeleteError } = await asDispatcher
+    .from("deliveries")
+    .delete()
+    .eq("id", delivery.id)
+    .select();
+  const { data: goneCheck } = await admin
+    .from("deliveries")
+    .select("id")
+    .eq("id", delivery.id);
+  check(
+    "dispatcher CAN delete the delivery",
+    !dispatcherDeleteError && deletedRows?.length === 1 && goneCheck?.length === 0,
   );
 } finally {
   await admin.from("deliveries").delete().eq("id", delivery.id);

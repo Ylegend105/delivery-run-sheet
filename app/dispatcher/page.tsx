@@ -5,6 +5,7 @@ import { WeatherTag } from "@/components/WeatherTag";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { CreateDeliveryForm } from "./CreateDeliveryForm";
 import { AssignDriverSelect } from "./AssignDriverSelect";
+import { DeleteDeliveryButton } from "./DeleteDeliveryButton";
 import type { DeliveryRow, UserRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -59,6 +60,9 @@ export default async function DispatcherPage() {
               <th className="px-3 py-2">Status</th>
               <th className="px-3 py-2">Driver</th>
               <th className="px-3 py-2">WhatsApp</th>
+              <th className="px-3 py-2">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -105,12 +109,18 @@ export default async function DispatcherPage() {
                       } at ${delivery.address}: ${delivery.notes ?? ""}`.trim()}
                     />
                   </td>
+                  <td className="px-3 py-2">
+                    <DeleteDeliveryButton
+                      deliveryId={delivery.id}
+                      customerName={delivery.customer_name}
+                    />
+                  </td>
                 </tr>
               );
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-gray-400">
+                <td colSpan={8} className="px-3 py-6 text-center text-gray-400">
                   No deliveries yet.
                 </td>
               </tr>

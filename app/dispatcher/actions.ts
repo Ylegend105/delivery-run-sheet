@@ -46,3 +46,19 @@ export async function assignDelivery(deliveryId: string, driverId: string) {
 
   revalidatePath("/dispatcher");
 }
+
+export async function deleteDelivery(deliveryId: string) {
+  const { session, supabase } = await getSessionAndSupabase();
+  if (!session || session.role !== "dispatcher" || !supabase) {
+    throw new Error("Not authorized.");
+  }
+
+  const { error } = await supabase
+    .from("deliveries")
+    .delete()
+    .eq("id", deliveryId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/dispatcher");
+}

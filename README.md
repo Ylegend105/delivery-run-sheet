@@ -59,7 +59,8 @@ drivers and confirms driver B genuinely cannot read or write driver A's row.
 
 ## Setup — database
 
-Run `supabase/migrations/0001_init.sql` once, in order, via the Supabase
+Run each file in `supabase/migrations/` once, in filename order
+(`0001_init.sql`, then `0002_dispatcher_delete.sql`), via the Supabase
 dashboard's **SQL Editor** (or `supabase db push` if you use the CLI with a
 linked project). Then seed the allowlist — copy
 `supabase/seed.example.sql`, replace the placeholder emails, and run it the
