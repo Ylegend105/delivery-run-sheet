@@ -1,0 +1,19 @@
+[
+  {
+    "id": "problem",
+    "line": "Every morning, the same scramble. Who's taking what? Who already delivered?"
+  },
+  { "id": "product", "line": "Delivery Run Sheet fixes it." },
+  {
+    "id": "roles",
+    "line": "Dispatchers assign every drop in seconds. Drivers see only their own runs."
+  },
+  {
+    "id": "actions",
+    "line": "One tap marks it delivered. One tap opens WhatsApp, message already written."
+  },
+  {
+    "id": "close",
+    "line": "No spreadsheets. No group chats. Your whole day, on one screen."
+  }
+]

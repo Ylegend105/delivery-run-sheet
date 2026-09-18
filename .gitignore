@@ -50,3 +50,7 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# remotion marketing video: deps and render cache
+/marketing-video/node_modules
+/marketing-video/.remotion
