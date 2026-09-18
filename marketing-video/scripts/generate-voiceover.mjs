@@ -20,16 +20,23 @@ function loadEnv() {
   }
 }
 
+// "Brian" — a default voice. Free accounts are blocked from library voices, and
+// listing voices needs a voices_read permission the render key does not have.
+const FALLBACK_VOICE_ID = "nPczCjzI2devNBz1zQrb";
+
 async function pickVoiceId(apiKey) {
   if (process.env.ELEVENLABS_VOICE_ID) return process.env.ELEVENLABS_VOICE_ID;
   const res = await fetch("https://api.elevenlabs.io/v1/voices", {
     headers: { "xi-api-key": apiKey },
   });
-  if (!res.ok) throw new Error(`Listing voices failed: ${res.status} ${await res.text()}`);
+  if (!res.ok) {
+    console.warn(`Could not list voices (${res.status}); using stock voice.`);
+    return FALLBACK_VOICE_ID;
+  }
   const { voices } = await res.json();
-  if (!voices?.length) throw new Error("No voices available on this account.");
-  const preferred = voices.find((v) => /brian|adam|rachel|george/i.test(v.name));
-  const chosen = preferred ?? voices[0];
+  const preferred = voices?.find((v) => /brian|adam|rachel|george/i.test(v.name));
+  const chosen = preferred ?? voices?.[0];
+  if (!chosen) return FALLBACK_VOICE_ID;
   console.log(`Voice: ${chosen.name} (${chosen.voice_id})`);
   return chosen.voice_id;
 }

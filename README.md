@@ -79,11 +79,41 @@ same way.
 Set the same five in Vercel: **Project Settings → Environment Variables**
 (Production + Preview + Development).
 
+The marketing video has its own separate env file, `marketing-video/.env`,
+holding `ELEVENLABS_API_KEY` (elevenlabs.io → Developers → API Keys). It is
+only needed to regenerate the voice-over locally — the deployed site doesn't
+use it, so it does not belong in Vercel.
+
 ## Redeploying
 
 Push to the connected GitHub repo's default branch — Vercel redeploys
 automatically. For a manual deploy: `npx vercel --prod` from the project
 root (requires `vercel link` once, and the env vars above set in Vercel).
+
+## Marketing video (`marketing-video/`)
+
+A 24-second pitch video built with [Remotion](https://remotion.dev) and
+narrated by [ElevenLabs](https://elevenlabs.io) text-to-speech.
+
+```bash
+cd marketing-video
+npm install
+echo "ELEVENLABS_API_KEY=sk_..." > .env   # gitignored
+npm run voiceover                         # writes public/voiceover.mp3 + src/timings.json
+npm run render                            # writes out/delivery-run-sheet.mp4
+npm run studio                            # optional: interactive preview
+```
+
+The narration lives in `src/narration.json`, one line per scene.
+`scripts/generate-voiceover.mjs` sends the whole script to ElevenLabs'
+`/with-timestamps` endpoint, which returns the audio *and* character-level
+timings; the script converts those into per-scene start/end times in
+`src/timings.json`, so the visuals follow the real speech instead of
+hand-guessed durations. Re-run `npm run voiceover` after editing the
+narration and the scene timing re-syncs itself.
+
+The video project has its own `package.json` and is excluded from the app's
+`tsconfig.json` and ESLint config, so it can never break the Vercel build.
 
 ## Shortcuts taken (and what "more correct" would look like)
 
@@ -107,6 +137,19 @@ root (requires `vercel link` once, and the env vars above set in Vercel).
   password to brute-force) the worst case is enumerating which emails are
   registered, which is a low-severity issue here, but a public production
   version would add basic rate limiting.
+- **The marketing video was built by driving Remotion directly, not via the
+  Remotion Claude Code plugin.** The plugin was not present in this account's
+  plugin catalog and there was no `claude` CLI on `PATH` in the session to add
+  an external plugin marketplace with, so installing it wasn't possible from
+  where the work was happening. The plugin is a convenience wrapper — skills
+  and commands around the same `@remotion/cli` — so the output is the same
+  MP4 either way. To use the real plugin: `claude plugin marketplace add
+  remotion-dev/remotion` then `/plugin install` from an interactive terminal.
+- **Voice: a stock ElevenLabs voice ("Brian"), hardcoded by ID.** A free
+  ElevenLabs account can't use *library* voices via the API, and listing
+  voices needs a `voices_read` permission the render key deliberately doesn't
+  have (it's scoped to text-to-speech only). Hardcoding a known-good default
+  voice ID avoided both limits. A paid account would list voices and pick.
 - **Database password handling**: the Postgres database password generated
   during project creation is only needed for direct `psql`/CLI database
   connections, which this app doesn't use (all access goes through
@@ -125,6 +168,11 @@ root (requires `vercel link` once, and the env vars above set in Vercel).
   service): none were used for this app. All Supabase/GitHub/OpenWeatherMap
   work was done with the Supabase CLI, GitHub CLI, and plain `curl`/`fetch`
   calls run directly in a terminal, not through an MCP integration.
+
+For the marketing video, the Remotion plugin was asked for but wasn't
+installable in that session (see Shortcuts above), so Remotion was driven
+directly through its CLI. A browser tool *was* used, to open the ElevenLabs
+dashboard and create a text-to-speech-scoped API key.
 
 ## Checklist
 
